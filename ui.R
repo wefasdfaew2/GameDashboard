@@ -3,6 +3,7 @@ library(leaflet)
 
 dashboardPage(skin = 'green',
   dashboardHeader(title = 'Game Dashboard'),
+  
   dashboardSidebar(
     sidebarMenu(
       menuItem('Encounter', tabName = 'encounter', icon = icon('binoculars')),
@@ -12,12 +13,18 @@ dashboardPage(skin = 'green',
       menuItem('Data', tabName = 'data', icon = icon('database'))
     )
   ),
+  
   dashboardBody(
     tabItems(
       tabItem(tabName = 'encounter',
         fluidRow(
-          box(title = 'Encounter Map', width = 12,
-              leafletOutput('mpEncounter'))
+          box(title = 'Encounter Map', width = 9, height = '500px',
+              leafletOutput('mpEncounter', height = '440px')),
+          box(title = 'Map Input', width= 3, height = '500px',
+              selectInput('slMapType', 'Map Type', selected = 'Recent',
+                          choices = c('Recent', 'All', 'Species')),
+              selectInput('slSpecies_encounter', 'Species', selected = 'DBHS',
+                          choices = c('CBHS', 'DBHS', 'RBHS', 'MULD', 'RMEL')))
           ),
         fluidRow(
           box(title = 'Species Count', width = 9, height = 470,
