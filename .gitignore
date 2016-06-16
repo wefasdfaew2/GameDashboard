@@ -3,4 +3,4 @@
 .Rproj.user
 GameDashboard.Rproj
 data
-dg_config.R
+db_config.R
