@@ -13,6 +13,7 @@ library(RSQLServer)
 library(DBI)
 source('db_config.R')
 
+bios <- read_csv('data/bioareas.csv')
 xyConv <- function(df, xy = c('long_x', 'lat_y'), CRSin = '+proj=longlat',
                    CRSout = '+proj=utm +zone=11') {
   df <- df[complete.cases(df[, xy]), ]
@@ -32,12 +33,27 @@ colPalette <- c("#3366CC", "#DC3912", "#FF9900", "#109618", "#990099", "#0099C6"
                 "#DD4477", "#66AA00", "#B82E2E", "#316395", "#994499", "#22AA99", 
                 "#AAAA11", "#6633CC", "#E67300", "#8B0707", "#651067", "#329262", 
                 "#5574A6", "#3B3EAC")
+vBios <- bios %>% select(Biologist) %>% extract2(1) %>%  unique() %>% sort()
 
 server <- function(input, output, session) {
 #####################
 # PAGE 1: ENCOUNTER #
 #####################
-  ## encounter data
+  ## updating initial inputs
+  updateSelectInput(session, 'slBiologist', choices = vBios, selected = '')
+  vLookup <- reactive({
+    vLkp <- switch(input$slLookup,
+                   'Management Area' = 'MGMT',
+                   'Hunt Unit' = 'HuntUnit')
+    dat <- bios %>% filter(Biologist == input$slBiologist) %>%
+      extract2(vLkp) %>% unique() %>% sort()
+    return(dat)
+  })
+  observeEvent(c(input$slBiologist, input$slLookup), {
+    updateSelectInput(session, 'slHuntUnit', choices = vLookup())
+  })
+  
+  ## get encounter data from database
   dat <- eventReactive(input$abGetData, {
     dat <- tbl(src, 'data_Capture') %>% 
        filter(CapHuntUnit == input$slHuntUnit) %>% 
