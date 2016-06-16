@@ -23,11 +23,11 @@ dashboardPage(skin = 'green',
                      selectInput('slBiologist', 'Biologist', choices = '')),
               column(width = 3, 
                      selectInput('slLookup', 'Search By', selected = '',
-                                 choices = c('Management Area', 'Hunt Unit'))),
+                                 choices = c('Management Area', 'Hunt Unit', 'Mountain Range'))),
               column(width = 3,
-                     selectInput('slHuntUnit', 'Hunt Unit', choices = '')),
+                     selectizeInput('slLookupValue', '', choices = '', multiple = TRUE)),
               column(width = 3,
-                     selectInput('slRange', 'Mountain Range', choices = ''))
+                     selectizeInput('slSpecies', 'Species', choices = '', multiple = TRUE))
               ),
           fluidRow(width = 12,
               column(width = 3, offset = 9, actionButton('abGetData', 'Get Data', width = '100%', icon = icon('cloud-download')))
@@ -36,9 +36,7 @@ dashboardPage(skin = 'green',
         
         fluidRow(
           box(title = 'Encounter Map', width = 12, height = '600px',
-              leafletOutput('mpEncounter', height = '470px'),
-              selectInput('slSpecies_map', 'Species', width = '25%', selected = 'All',
-                          choices = c('All', 'CBHS', 'DBHS', 'MULD', 'MTGT', 'RBHS', 'RMEL')))
+              leafletOutput('mpEncounter', height = '540px'))
           ),
         fluidRow(
           tabBox(title = 'Species Count', width = 8, height = 500, side = 'right',

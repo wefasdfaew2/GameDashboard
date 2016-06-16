@@ -11,9 +11,11 @@ library(lubridate)
 library(sp)
 library(RSQLServer)
 library(DBI)
+library(lazyeval)
 source('db_config.R')
 
 bios <- read_csv('data/bioareas.csv')
+ranges <- read_csv('data/ranges.csv')
 xyConv <- function(df, xy = c('long_x', 'lat_y'), CRSin = '+proj=longlat',
                    CRSout = '+proj=utm +zone=11') {
   df <- df[complete.cases(df[, xy]), ]
@@ -41,49 +43,73 @@ server <- function(input, output, session) {
 #####################
   ## updating initial inputs
   updateSelectInput(session, 'slBiologist', choices = vBios, selected = '')
-  vLookup <- reactive({
-    vLkp <- switch(input$slLookup,
-                   'Management Area' = 'MGMT',
-                   'Hunt Unit' = 'HuntUnit')
-    dat <- bios %>% filter(Biologist == input$slBiologist) %>%
-      extract2(vLkp) %>% unique() %>% sort()
+  biologist <- reactive({
+    dat <- bios %>% 
+      filter(Biologist == input$slBiologist) %>% 
+      inner_join(ranges, by = ('HuntUnit' = 'HuntUnit')) %>% unique()
     return(dat)
   })
+  observeEvent(input$slBiologist, {
+    vSpecies <- biologist() %>% extract2('Species') %>% unique() %>% sort()
+    updateSelectizeInput(session, 'slSpecies', choices = vSpecies, selected = '')
+  })
   observeEvent(c(input$slBiologist, input$slLookup), {
-    updateSelectInput(session, 'slHuntUnit', choices = vLookup())
+    vLkp <- switch(input$slLookup,
+                   'Management Area' = 'MGMT',
+                   'Hunt Unit' = 'HuntUnit',
+                   'Mountain Range' = 'Range')
+    dat <- biologist() %>% extract2(vLkp) %>% unique() %>% sort()
+    updateSelectizeInput(session, 'slLookupValue', label = input$slLookup, choices = dat)
   })
   
   ## get encounter data from database
   dat <- eventReactive(input$abGetData, {
-    dat <- tbl(src, 'data_Capture') %>% 
-       filter(CapHuntUnit == input$slHuntUnit) %>% 
-       select(EncounterID, AnimalKey, CapDate, Status, Age, 
-              capE, capN, CapMtnRange, CapHuntUnit, CapLocDesc) %>% 
-       inner_join(tbl(src, 'data_Animal')) %>% 
-       collect()
+    vSpp <- input$slSpecies
+    dat <- tbl(src, 'data_Animal') %>%
+      inner_join(tbl(src, 'data_Capture'), by = c('AnimalKey' = 'AnimalKey')) %>%
+      select(ndowID, Species, Sex, CapDate, Status, Age,
+             capE, capN, CapMtnRange, CapHuntUnit, EncounterID)
+
+      if (length(vSpp) == 1) {
+        dat <- dat %>% filter(Species == vSpp)
+      } else {
+        dat <- dat %>% filter(Species %in% vSpp)
+      }
+
+    dat <- collect(dat)
+
+    clmn <- switch(input$slLookup,
+                   'Hunt Unit' = 'CapHuntUnit',
+                   'Mountain Range' = 'CapMtnRange')
+    print(clmn)
+    val <- input$slLookupValue
+    dots <- interp(~x %in% val, .values = list(x = as.name(clmn)))
+    dat <- dat %>% filter_(dots)
+
     return(dat)
   })
   
-  ## species vector for selected data
-  vSpecies <- eventReactive(input$abGetData, {
-    dat() %>% select(Species) %>% extract2(1) %>% unique() %>% sort()
-  })
-  observeEvent(input$abGetData, {
-    updateSelectInput(session, 'slSpecies_map', choices = c('All', vSpecies()), selected = 'All')
-  })
+  # ## species vector for selected data
+  # vSpecies <- eventReactive(input$abGetData, {
+  #   dat() %>% select(Species) %>% extract2(1) %>% unique() %>% sort()
+  # })
+  # observeEvent(input$abGetData, {
+  #   updateSelectInput(session, 'slSpecies_map', choices = c('All', vSpecies()), selected = 'All')
+  # })
   
   ## encounter map
   output$mpEncounter <- renderLeaflet({
     dat <- xyConv(dat(), c('capE', 'capN'), '+init=epsg:26911', '+init=epsg:4326')
-    
-    if (input$slSpecies_map != 'All') {
-      dat <- filter(dat, Species == input$slSpecies_map)
-    }
-    
+    pal <- colorFactor(gdocs_pal()(length(input$slSpecies)), input$slSpecies)
     leaflet() %>%
       addProviderTiles('Esri.WorldTopoMap',
                        options = providerTileOptions(attribution = NA)) %>%
-      addCircleMarkers(lng = dat$x, lat = dat$y, stroke = FALSE, radius = 4)
+      addCircleMarkers(lng = dat$x, lat = dat$y, 
+                       stroke = FALSE, 
+                       radius = 4, 
+                       fillOpacity = .8,
+                       color = pal(dat$Species)) %>% 
+      addLegend('bottomright', pal = pal, values = input$slSpecies, title = 'Species')
   })
   
   ## encounter summary table
