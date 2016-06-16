@@ -1,4 +1,5 @@
 library(shinydashboard)
+library(shinyjs)
 library(leaflet)
 
 dashboardPage(skin = 'green',
@@ -14,35 +15,47 @@ dashboardPage(skin = 'green',
     )
   ),
   
-  dashboardBody(
+  dashboardBody(useShinyjs(),
     tabItems(
       tabItem(tabName = 'encounter',
+          fluidRow(title = 'Get Data', width = 12,
+              column(width = 3,
+                     selectInput('slBiologist', 'Biologist', 
+                                 choices = c('Mike Cox', 'Pat Cummings', 'Cody McKee', 'Chris Morris', 'Cody Schroeder', 'Peri Wolf'))),
+              column(width = 3, 
+                     selectInput('slArea', 'MGMT Area', 
+                                 choices = 1:30)),
+              column(width = 3,
+                     selectInput('slHuntUnit', 'Hunt Unit', 
+                                 choices =c(101, 102, 103, 192, 195, 262, 263))),
+              column(width = 3,
+                     selectInput('slRange', 'Mountain Range', 
+                                 choices =c(101, 102, 103, 192, 195, 262, 263)))
+              ),
+          fluidRow(width = 12,
+              column(width = 3, offset = 9, actionButton('abGetData', 'Get Data', width = '100%', icon = icon('cloud-download')))
+              ),
+        br(),
+        
         fluidRow(
-          box(title = 'Encounter Map', width = 9, height = '500px',
-              leafletOutput('mpEncounter', height = '440px')),
-          box(title = 'Map Input', width= 3, height = '500px',
-              selectInput('slMapType', 'Map Type', selected = 'Recent',
-                          choices = c('Recent', 'All', 'Species')),
-              selectInput('slSpecies_encounter', 'Species', selected = 'DBHS',
-                          choices = c('CBHS', 'DBHS', 'RBHS', 'MULD', 'RMEL')))
+          box(title = 'Encounter Map', width = 12, height = '600px',
+              leafletOutput('mpEncounter', height = '470px'),
+              selectInput('slSpecies_map', 'Species', width = '25%', selected = 'All',
+                          choices = c('All', 'CBHS', 'DBHS', 'MULD', 'MTGT', 'RBHS', 'RMEL')))
           ),
         fluidRow(
-          box(title = 'Species Count', width = 9, height = 470,
-              plotOutput('plSpeciesBar')),
-          valueBox('5108', 'Encounter Records', icon = icon('table'), color = 'green', width = 3),
-          valueBox('27559', 'Test Results', icon = icon('flask'), color = 'blue', width = 3),
-          valueBox('2.2M', 'GPS locations', icon = icon('compass'), color = 'red', width = 3),
-          valueBox('78', 'Species', icon = icon('paw'), color = 'purple', width = '3')
+          tabBox(title = 'Species Count', width = 8, height = 500, side = 'right',
+            tabPanel('Species', 
+                     plotOutput('plSpeciesBar', height = '430px')),
+            tabPanel('Annual',
+                     plotOutput('plSpeciesTS', height = '430px'))),
+          box(title = 'Distribution Tables', width = 4, height = 500,
+              DT::dataTableOutput('tbSppDist'))
         ),
         fluidRow(
           box(title = 'Recent Encounters', width = 12, 
                  DT::dataTableOutput('tbEncounter'))
-        )
-      ),
-      
-      tabItem(tabName = 'widgets'
-              
-      )
+                )
     )
   )
-)
+))
