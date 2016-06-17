@@ -12,7 +12,7 @@ library(sp)
 library(RSQLServer)
 library(DBI)
 library(lazyeval)
-source('db_config.R')
+#source('db_config.R')
 
 bios <- read_csv('data/bioareas.csv')
 ranges <- read_csv('data/ranges.csv')
@@ -65,6 +65,7 @@ server <- function(input, output, session) {
   ## get encounter data from database
   dat <- eventReactive(input$abGetData, {
     vSpp <- input$slSpecies
+    source('db_config.R')
     dat <- tbl(src, 'data_Animal') %>%
       inner_join(tbl(src, 'data_Capture'), by = c('AnimalKey' = 'AnimalKey')) %>%
       select(ndowID, Species, Sex, CapDate, Status, Age,

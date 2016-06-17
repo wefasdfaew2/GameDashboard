@@ -18,6 +18,7 @@ dashboardPage(skin = 'green',
   dashboardBody(useShinyjs(),
     tabItems(
       tabItem(tabName = 'encounter',
+          div(id = 'getdata', class = 'whitebg',
           fluidRow(title = 'Get Data', width = 12,
               column(width = 3,
                      selectInput('slBiologist', 'Biologist', choices = '')),
@@ -30,8 +31,8 @@ dashboardPage(skin = 'green',
                      selectizeInput('slSpecies', 'Species', choices = '', multiple = TRUE))
               ),
           fluidRow(width = 12,
-              column(width = 3, offset = 9, actionButton('abGetData', 'Get Data', width = '100%', icon = icon('cloud-download')))
-              ),
+              column(width = 3, offset = 9, actionButton('abGetData', 'Get Data', icon = icon('cloud-download')))
+              )),
         br(),
         
         fluidRow(
