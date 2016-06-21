@@ -290,6 +290,14 @@ ggplot(filter(biometric, Biometric == 'ChestGirth'), aes(x = Measurement, fill =
   geom_histogram(binwidth = 2.5)
 ggplot(filter(biometric, Biometric == 'ChestGirth'), aes(x = Measurement, fill = factor(CapYear))) +
   geom_density()
+
+### boxplot
+ggplot(biometric, aes(x = Biometric, y = Measurement)) +
+  geom_boxplot()
+ggplot(filter(biometric, Biometric == 'Weight'), aes(x = CapMtnRange, y = Measurement, color = Sex)) +
+  geom_boxplot() +
+  scale_color_gdocs(drop = T)
+
 ### simulating shiny app
 xval <- 'ChestGirth'
 yval <- 'Weight'
@@ -301,6 +309,11 @@ ggplot(messyBiom, aes_string(x = xval, y = yval, color = colval)) +
   geom_point() +
   theme_bw() 
   
+
+
+
+
+
 ### writing a function for interactive data analysis
 intPlot <- function(dat, xval, yval, colval, type, filval = colval,
                     groupval = NULL, facetval = NULL) {
