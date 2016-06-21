@@ -12,7 +12,7 @@ library(sp)
 library(RSQLServer)
 library(DBI)
 library(lazyeval)
-#source('db_config.R')
+source('db_config.R')
 
 bios <- read_csv('data/bioareas.csv')
 ranges <- read_csv('data/ranges.csv')
@@ -86,6 +86,12 @@ server <- function(input, output, session) {
     val <- input$slLookupValue
     dots <- interp(~x %in% val, .values = list(x = as.name(clmn)))
     dat <- dat %>% filter_(dots)
+    
+    ### type conversion
+    dat$CapDate <- as_date(dat$CapDate)
+    dat$capE <- as.numeric(dat$capE)
+    dat$capN <- as.numeric(dat$capN)
+    dat$CapYear <- year(dat$CapDate)
 
     return(dat)
   })
@@ -109,13 +115,12 @@ server <- function(input, output, session) {
                        stroke = FALSE, 
                        radius = 4, 
                        fillOpacity = .8,
-                       color = pal(dat$Species)) %>% 
-      addLegend('bottomright', pal = pal, values = input$slSpecies, title = 'Species')
+                       color = pal(dat$Species))
   })
   
   ## encounter summary table
   output$tbEncounter <- DT::renderDataTable({
-    datatable(head(dat()[, c('Species', 'ndowID', 'Sex', 'Status', 'CapDate', 'CapMtnRange', 'CapHuntUnit')], 50))
+    datatable(dat()[, c('Species', 'ndowID', 'Sex', 'Status', 'CapDate', 'CapMtnRange', 'CapHuntUnit', 'CapYear')])
   })
   
   ## species distribution for selected input
@@ -139,6 +144,7 @@ server <- function(input, output, session) {
                          labels = seq(min(dat$Year), max(dat$Year), 1)) +
       theme_bw()
   })
+  
   ## species distribution table
   output$tbSppDist <- DT::renderDataTable({
     dat <- dat() %>% group_by(Species, Sex) %>% 
@@ -146,6 +152,24 @@ server <- function(input, output, session) {
       arrange(Species, Sex)
     dat$Sex[dat$Sex == ''] <- 'Unk'
     datatable(dat, rownames = F, options = list(dom = 't'))
-      
+  })
+
+############  
+# DATA TAB #
+############
+  
+  output$tbEncSummary <- DT::renderDataTable({
+    datatable(head(dat(), 5), rownames = F, options = list(dom = 't'))
+  })
+  
+  output$htmlEncSummary <- renderUI({
+    HTML(
+      paste(sep = '<br/>', 
+            paste('<b>N Rows:</b> ', nrow(dat())),
+            paste('<b>N Columns:</b>', ncol(dat())),
+            paste('<b>Min Date:</b>', min(as_date(dat()$CapDate))),
+            paste('<b>Max Date:</b>', max(as_date(dat()$CapDate)))
+            )
+      )
   })
 }

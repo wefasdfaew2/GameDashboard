@@ -120,3 +120,119 @@ previewColors(pal, vSpp)
 leaflet() %>% addTiles() %>% 
   addCircleMarkers(lng = df$x, lat = df$y, stroke = FALSE, radius = 4, color = pal(df$Species)) %>% 
   addLegend('bottomright', pal = pal, values = c('DBHS', 'RBHS'), title = 'Species')
+
+################################
+# GET DATA, AND ALL OTHER DATA #
+################################
+source('db_config.R')
+dat <- tbl(src, 'data_Animal') %>% 
+  inner_join(tbl(src, 'data_Capture'), by = c('AnimalKey' = 'AnimalKey')) %>% 
+  select(ndowID, Species, Sex, CapDate, Status, Age, 
+         capE, capN, CapMtnRange, CapHuntUnit, EncounterID) %>% 
+  filter(Species == 'MULD' & CapHuntUnit %in% c('101', '102', '103')) %>% 
+  collect()
+
+# type conversions
+dat$CapDate <- ymd_hms(dat$CapDate)
+dat$capE <- as.numeric(dat$capE)
+dat$capN <- as.numeric(dat$capN)
+
+
+source('db_config.R')
+biometric <- dat %>% 
+  left_join(tbl(src, 'data_Biometric'), copy = TRUE) %>% 
+  select(EncounterID, Sex, Age, Biometric, Measurement, Units) %>% 
+  collect()
+# or (below may be faster...double check later)
+source('db_config.R')
+biometric <- tbl(src, 'data_Biometric') %>% 
+  filter(EncounterID %in% dat$EncounterID) %>% 
+  collect() %>% 
+  left_join(dat, by = c('EncounterID' = 'EncounterID')) %>% 
+  select(ndowID, Sex, Age, Biometric, Measurement, Units, CapMtnRange, CapHuntUnit, CapDate, EncounterID)
+
+## query without data to return
+source('db_config.R')
+dat <- tbl(src, 'data_Animal') %>% 
+  inner_join(tbl(src, 'data_Capture'), by = c('AnimalKey' = 'AnimalKey')) %>% 
+  select(ndowID, Species, Sex, CapDate, Status, Age, 
+         capE, capN, CapMtnRange, CapHuntUnit, EncounterID) %>% 
+  filter(Species == 'desert bighorn') %>% 
+  collect()
+  
+
+# type conversion
+biometric$
+
+## graphing this data with ggplot2
+biometric$CapDate <- ymd_hms(biometric$CapDate)
+biometric$CapYear <- year(biometric$CapDate)
+# basic
+ggplot(biometric, aes(x = Biometric, y = Measurement)) +
+  geom_boxplot()
+# group
+ggplot(biometric, aes(x = Biometric, y = Measurement)) +
+  geom_boxplot() +
+  facet_wrap(~CapMtnRange)
+# with plotly
+library(plotly)
+p <- ggplot(biometric, aes(x = Biometric, y = Measurement, fill = CapMtnRange)) +
+  geom_boxplot(outlier.shape = 95, outlier.size = 7) +
+  scale_fill_gdocs() +
+  theme_bw() 
+p
+
+ggplot(filter(biometric, Biometric == 'Weight'),
+       aes(x = Biometric, y = Measurement, fill = CapMtnRange)) +
+  geom_boxplot(outlier.shape = 95, outlier.size = 7) +
+  scale_fill_gdocs() +
+  facet_wrap(~CapYear) +
+  theme_bw() 
+
+################
+# SUMMARY DATA #
+################
+bio_gp <- biometric %>% 
+  select(ndowID, EncounterID, Biometric, Measurement)
+bio_tidy <- tidyr::spread(bio_gp, Biometric, Measurement)
+bio_tidy
+bio_sm <- xda::numSummary(data.frame(bio_tidy[, 3:8]))
+bio_sm[, c(1, 2, 4, 3, 6, 12:14, 5)]
+
+## get data for summary
+src <- RSQLServer::src_sqlserver("GAMEDB", database = "encounterdb")
+dat <- tbl(src, 'data_Animal') %>% 
+  inner_join(tbl(src, 'data_Capture'), by = c('AnimalKey' = 'AnimalKey')) %>% 
+  select(ndowID, Species, Sex, CapDate, Status, Age, 
+         capE, capN, CapMtnRange, CapHuntUnit, EncounterID) %>% 
+  filter(Species == 'MULD' & CapHuntUnit %in% c('101', '102', '103')) %>% 
+  collect()
+
+dat$CapDate <- ymd_hms(dat$CapDate)
+dat$capE <- as.numeric(dat$capE)
+dat$capN <- as.numeric(dat$capN)
+dat$CapYear <- year(dat$CapDate)
+
+## get biometric data
+biometric <- tbl(src, 'data_Biometric') %>% 
+  filter(EncounterID %in% dat$EncounterID) %>% 
+  collect() %>% 
+  left_join(dat, by = c('EncounterID' = 'EncounterID')) %>% 
+  select(ndowID, Sex, Age, Biometric, Measurement, Units, CapMtnRange, 
+         CapHuntUnit, CapDate, CapYear, EncounterID) 
+
+## bio summary
+dim(biometric)
+head(biometric, 5)
+bio_smry <- biometric %>% 
+  select(ndowID, EncounterID, Biometric, Measurement) %>% 
+  tidyr::spread(Biometric, Measurement)
+bio_smry <- xda::numSummary(data.frame(bio_smry[, 3:8]))[, c(1, 2, 4, 3, 6, 12:14, 5)]
+DT::datatable(bio_smry)
+
+## enc summary
+dim(dat)
+head(dat, 5)
+as_date(c(min(dat$CapDate), max(dat$CapDate)))
+xda::numSummary(data.frame(dat))
+xda::charSummary(data.frame(dat))

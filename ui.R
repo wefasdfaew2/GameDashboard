@@ -23,7 +23,7 @@ dashboardPage(skin = 'green',
               column(width = 3,
                      selectInput('slBiologist', 'Biologist', choices = '')),
               column(width = 3, 
-                     selectInput('slLookup', 'Search By', selected = '',
+                     selectInput('slLookup', 'Search By', selected = 'Hunt Unit',
                                  choices = c('Management Area', 'Hunt Unit', 'Mountain Range'))),
               column(width = 3,
                      selectizeInput('slLookupValue', '', choices = '', multiple = TRUE)),
@@ -31,7 +31,8 @@ dashboardPage(skin = 'green',
                      selectizeInput('slSpecies', 'Species', choices = '', multiple = TRUE))
               ),
           fluidRow(width = 12,
-              column(width = 3, offset = 9, actionButton('abGetData', 'Get Data', icon = icon('cloud-download')))
+              column(width = 3, offset = 9, 
+                     actionButton('abGetData', 'Get Data', icon = icon('cloud-download')))
               )),
         br(),
         
@@ -52,6 +53,34 @@ dashboardPage(skin = 'green',
           box(title = 'Recent Encounters', width = 12, 
                  DT::dataTableOutput('tbEncounter'))
                 )
-    )
+    ),
+    tabItem(tabName = 'figures',
+        fluidRow(title = 'Figure Input', width = 12,
+            column(width = 4,
+                   selectInput('slXaxis', 'X Axis', choices = ''),
+                   selectInput('slYaxis', 'Y Axis', choices = '')),
+            column(width = 4,
+                   selectInput('slGroup', 'Group', choices = ''),
+                   selectInput('slColor', 'Color', choices = '')),
+            column(width = 4,
+                   selectInput('slPlotType', 'Plot Type', choices = ''),
+                   br(),
+                   actionButton('abCreatePlot', 'Create Plot', icon = icon('cogs')))
+            )
+        ),
+    tabItem(tabName = 'data',
+        tabBox(title = 'Encounter Summary', width = 12,
+          tabPanel('Table', 
+                   DT::dataTableOutput('tbEncSummary', width = 'auto')),
+          tabPanel('Summary', 
+                   htmlOutput('htmlEncSummary'))
+              ),
+        tabBox(title = 'Biometric Summary', width = 12,
+          tabPanel('Table', 
+                   DT::dataTableOutput('tbBioSummary')),
+          tabPanel('Summary', 
+                   htmlOutput('htmlBioSummary'))
+          )
+           )
   )
 ))
