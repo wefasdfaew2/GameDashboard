@@ -151,9 +151,15 @@ biometric <- tbl(src, 'data_Biometric') %>%
   left_join(dat, by = c('EncounterID' = 'EncounterID')) %>% 
   select(ndowID, Sex, Age, Biometric, Measurement, Units, CapMtnRange, CapHuntUnit, CapDate, EncounterID)
 
-## query without data to return
+## query without data to return, work around error when no data returned
 source('db_config.R')
+biom <- tbl(src, 'data_Biometric') %>% 
+  collect() %>% 
+  filter(EncounterID %in% dat$'EncounterID') %>% 
+  left_join(dat)
+
 dat <- tbl(src, 'data_Animal') %>% 
+  
   inner_join(tbl(src, 'data_Capture'), by = c('AnimalKey' = 'AnimalKey')) %>% 
   select(ndowID, Species, Sex, CapDate, Status, Age, 
          capE, capN, CapMtnRange, CapHuntUnit, EncounterID) %>% 
@@ -236,3 +242,92 @@ head(dat, 5)
 as_date(c(min(dat$CapDate), max(dat$CapDate)))
 xda::numSummary(data.frame(dat))
 xda::charSummary(data.frame(dat))
+
+##################################
+# INTERACTIVE DATA VISUALIZATION #
+##################################
+## get data from database
+source('db_config.R')
+dat <- tbl(src, 'data_Animal') %>% 
+  inner_join(tbl(src, 'data_Capture'), by = c('AnimalKey' = 'AnimalKey')) %>% 
+  select(ndowID, Species, Sex, CapDate, Status, Age, 
+         capE, capN, CapMtnRange, CapHuntUnit, EncounterID) %>% 
+  filter(Species == 'MULD' & CapHuntUnit %in% c('101', '102', '103')) %>% 
+  collect()
+# type conversions
+dat$CapDate <- as_date(dat$CapDate)
+dat$CapYear <- year(dat$CapDate)
+dat$capE <- as.numeric(dat$capE)
+dat$capN <- as.numeric(dat$capN)
+source('db_config.R')
+biometric <- tbl(src, 'data_Biometric') %>% 
+  filter(EncounterID %in% dat$EncounterID) %>% 
+  collect() %>% 
+  left_join(dat, by = c('EncounterID' = 'EncounterID')) %>% 
+  select(ndowID, Sex, Age, Biometric, Measurement, Units, CapMtnRange, 
+         CapHuntUnit, CapDate, CapYear, EncounterID)
+messyBiom <- biometric %>% 
+  select(ndowID, EncounterID, Biometric, Measurement) %>% 
+  tidyr::spread(Biometric, Measurement)
+
+## making figures
+### boxplot
+ggplot(biometric, aes(x = Biometric, y = Measurement, fill = CapMtnRange)) +
+  geom_boxplot(outlier.shape = 95, outlier.size = 7) +
+  scale_fill_gdocs(drop = F) +
+  theme_bw() 
+### scatter with biometric data
+ggplot(messyBiom, aes(x = HindLeg, y = Weight)) +
+  geom_point() +
+  theme_bw()
+### bar charts, ..count..
+ggplot(dat, aes_string(x = 'CapMtnRange', y = '..count..')) +
+  geom_bar(stat = 'count')
+
+## figure types
+### distributions
+ggplot(filter(biometric, Biometric == 'ChestGirth'), aes(x = Measurement, fill = factor(CapYear))) +
+  geom_histogram(binwidth = 2.5)
+ggplot(filter(biometric, Biometric == 'ChestGirth'), aes(x = Measurement, fill = factor(CapYear))) +
+  geom_density()
+### simulating shiny app
+xval <- 'ChestGirth'
+yval <- 'Weight'
+colval <- 'Sex'
+filval <- colval
+group <- NA
+facetval <- 'Age'
+ggplot(messyBiom, aes_string(x = xval, y = yval, color = colval)) +
+  geom_point() +
+  theme_bw() 
+  
+### writing a function for interactive data analysis
+intPlot <- function(dat, xval, yval, colval, type, filval = colval,
+                    groupval = NULL, facetval = NULL) {
+  gg <- ggplot(dat, aes_string(x = xval, y = yval))
+  
+  if (type == 'scatter') {
+    gg <- gg + geom_point(aes_string(color = colval)) +
+      scale_color_gdocs()
+  } else if (type == 'box') {
+    gg <- gg + geom_boxplot(aes_string(fill = filval)) +
+      scale_fill_gdocs()
+  } else if (type == 'bar') {
+    gg <- gg + geom_bar(aes_string(color = NULL, fill = colval)) +
+      scale_fill_gdocs()
+  }
+  gg <- gg + theme_bw()
+  return(gg)
+}
+
+plotData <- function(xval, yval, type) {
+  if(type == 'scatter') {
+    dat <- messyBiom
+  } else if {type == }
+}
+### testing scatter plot
+intPlot(messyBiom, xval, yval, colval, type = 'scatter')
+### testing box plot
+intPlot(biometric, 'Biometric', 'Measurement', 'Sex', type = 'box')
+### testing bar plot
+intPlot(dat, 'CapYear', '..count..', 'CapMtnRange', type = 'bar')

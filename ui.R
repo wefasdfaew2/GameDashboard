@@ -57,16 +57,25 @@ dashboardPage(skin = 'green',
     tabItem(tabName = 'figures',
         fluidRow(title = 'Figure Input', width = 12,
             column(width = 4,
-                   selectInput('slXaxis', 'X Axis', choices = ''),
-                   selectInput('slYaxis', 'Y Axis', choices = '')),
+                   selectInput('slXaxis', 'X Axis', selected = 'CapYear',
+                               choices = c('CapYear', 'CapMtnRange', 'Biometric', 
+                                           'BCS', 'ChestGirth', 'HindLeg', 'Jaw',
+                                           'NeckSize', 'Weight')),
+                   selectInput('slYaxis', 'Y Axis', selected = 'Weight',
+                               choices = c('BCS', 'ChestGirth', 'HindLeg', 'Jaw', 
+                                           'NeckSize', 'Weight', '..count..'))),
             column(width = 4,
                    selectInput('slGroup', 'Group', choices = ''),
-                   selectInput('slColor', 'Color', choices = '')),
+                   selectInput('slColor', 'Color', selected = '', 
+                               choices = c('None' = NULL, 'Age', 'Sex', 'CapMtnRange', 'CapHuntUnit'))),
             column(width = 4,
-                   selectInput('slPlotType', 'Plot Type', choices = ''),
+                   selectInput('slPlotType', 'Plot Type', selected = 'scatter',
+                               choices = c('Bar', 'Box', 'Scatter')),
                    br(),
                    actionButton('abCreatePlot', 'Create Plot', icon = icon('cogs')))
-            )
+            ),
+        fluidRow(width = 12,
+                 plotOutput('plFigure'))
         ),
     tabItem(tabName = 'data',
         tabBox(title = 'Encounter Summary', width = 12,
@@ -74,13 +83,14 @@ dashboardPage(skin = 'green',
                    DT::dataTableOutput('tbEncSummary', width = 'auto')),
           tabPanel('Summary', 
                    htmlOutput('htmlEncSummary'))
-              ),
+                  ),
         tabBox(title = 'Biometric Summary', width = 12,
           tabPanel('Table', 
                    DT::dataTableOutput('tbBioSummary')),
           tabPanel('Summary', 
-                   htmlOutput('htmlBioSummary'))
-          )
+                   htmlOutput('htmlBioSummary'),
+                   DT::dataTableOutput('tbBioNumSum'))
+                  )
            )
   )
 ))

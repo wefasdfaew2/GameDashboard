@@ -7,12 +7,14 @@ library(readr)
 library(ggplot2)
 library(ggthemes)
 library(dplyr)
+library(tidyr)
 library(lubridate)
 library(sp)
 library(RSQLServer)
 library(DBI)
 library(lazyeval)
 source('db_config.R')
+source('global.R')
 
 bios <- read_csv('data/bioareas.csv')
 ranges <- read_csv('data/ranges.csv')
@@ -165,7 +167,32 @@ server <- function(input, output, session) {
     dat$Sex[dat$Sex == ''] <- 'Unk'
     datatable(dat, rownames = F, options = list(dom = 't'))
   })
-
+  
+###############
+# FIGURES TAB #
+###############
+  figure <- eventReactive(input$abCreatePlot, {
+    x <- input$slXaxis
+    y <- input$slYaxis
+    colval <- input$slColor
+    fillval <- colval
+    type <- input$slPlotType
+    groupval <- NULL
+    facetval <- NULL
+    
+    mess <- biometric() %>% 
+      select(ndowID, EncounterID, CapMtnRange, CapHuntUnit, CapYear,
+             Age, Sex, Biometric, Measurement) %>% 
+      tidyr::spread(Biometric, Measurement)
+    
+    gg <- intPlot(mess, xval = x, yval = y, type = type,
+                  colval = colval)
+    return(gg)
+  })
+  
+  output$plFigure <- renderPlot({
+    figure()
+  })
 ############  
 # DATA TAB #
 ############
@@ -187,5 +214,22 @@ server <- function(input, output, session) {
   
   output$tbBioSummary <- DT::renderDataTable({
     datatable(head(biometric(), 25), rownames = F, options = list(dom = 't'))
+  })
+  
+  output$htmlBioSummary <- renderUI({
+    HTML(
+      paste(sep = '<br/>', 
+            paste('<b>N Rows:</b>', nrow(biometric())),
+            paste('<b>N Columns:</b>', ncol(biometric()))
+            )
+        )
+  })
+  
+  output$tbBioNumSum <- DT::renderDataTable({
+    tidySum <- biometric() %>% 
+      dplyr::select(ndowID, EncounterID, Biometric, Measurement) %>% 
+      spread(Biometric, Measurement)
+    tidySum <- xda::numSummary(data.frame(tidySum[, 3:8]))[, c(1, 2, 4, 3, 6, 12:14, 5)]
+    DT::datatable(tidySum, rownames = F, options = list(dom = 't'))
   })
 }
