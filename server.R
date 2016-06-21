@@ -96,6 +96,18 @@ server <- function(input, output, session) {
     return(dat)
   })
   
+  ## get biometric data
+  biometric <- eventReactive(input$abGetData, {
+    source('db_config.R')
+    biometric <- tbl(src, 'data_Biometric') %>% 
+      collect() %>%
+      filter(EncounterID %in% dat()$'EncounterID') %>% 
+      left_join(dat()) %>%
+      select(ndowID, Sex, Age, Biometric, Measurement, Units, CapMtnRange,
+             CapHuntUnit, CapDate, CapYear, EncounterID)
+    return(biometric)
+  })
+  
   # ## species vector for selected data
   # vSpecies <- eventReactive(input$abGetData, {
   #   dat() %>% select(Species) %>% extract2(1) %>% unique() %>% sort()
@@ -171,5 +183,9 @@ server <- function(input, output, session) {
             paste('<b>Max Date:</b>', max(as_date(dat()$CapDate)))
             )
       )
+  })
+  
+  output$tbBioSummary <- DT::renderDataTable({
+    datatable(head(biometric(), 25), rownames = F, options = list(dom = 't'))
   })
 }
