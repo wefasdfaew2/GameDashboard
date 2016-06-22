@@ -48,7 +48,13 @@ intPlot <- function(dat, xval, yval, colval, type, fillval = colval,
     gg <- gg + geom_violin(aes_string(fill = fillval)) +
       scale_fill_gdocs()
   }
+  
   gg <- gg + theme_bw()
+  
+  if (facetval != 'None') {
+    gg <- gg + facet_wrap(facetval)
+  }
+  
   return(gg)
 }
 
@@ -56,6 +62,7 @@ p <- intPlot(spreadBiom, 'ChestGirth', 'Weight', 'Sex', 'Scatter')
 library(plotly)
 ggplotly(p)
 
+library(shiny)
 ui <- fluidPage(
   sidebarLayout(
     sidebarPanel(
@@ -70,8 +77,9 @@ ui <- fluidPage(
                   choices = c('Sex', 'Age', 'CapMtnRange', 'CapHuntUnit', 'CapYear',
                               'BCS', 'ChestGirth', 'HindLeg', 'Jaw', 'NeckSize', 'Weight')),
       selectInput('color', 'Color', selected = 'Sex',
-                  choices = c('None' = NULL, 'Sex', 'Age', 'CapMtnRange', 'CapHuntUnit', 'CapYear',
-                              'BCS', 'ChestGirth', 'HindLeg', 'Jaw', 'NeckSize', 'Weight'))
+                  choices = c('None', 'Sex', 'Age', 'CapMtnRange', 'CapHuntUnit')),
+      selectInput('facet', 'Facet', selected = '',
+                  choices = c('None', 'Sex', 'Age', 'CapMtnRange', 'CapHuntUnit', 'CapYear'))
     ),
     mainPanel(plotOutput('plot'),
               textOutput('txt')))
@@ -81,11 +89,18 @@ server <- function(input, output) {
   output$plot <- renderPlot({
     x <- input$x
     y <- input$y
-    color <- input$color
+    color <- switch (input$color,
+      'None' = NULL,
+      'Sex' = 'Sex',
+      'Age' = 'Age',
+      'CapMtnRange' = 'CapMtnRange',
+      'CapHuntUnit' = 'CapHuntUnit'
+    )
     dat <- spreadBiom
     type <- input$type
+    facet <- input$facet
     
-    intPlot(dat, x, y, color, type)
+    intPlot(dat, x, y, color, type, facetval = facet)
   })
   output$txt <- renderText({
     paste(sep = ' | ',
@@ -93,8 +108,10 @@ server <- function(input, output) {
           input$y,
           input$color,
           input$data, 
-          input$type)
+          input$type,
+          input$facet)
   })
 }
 
-shinyApp(ui, server)
+shiny::shinyApp(ui, server)
+

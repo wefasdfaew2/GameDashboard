@@ -11,7 +11,16 @@ intPlot <- function(dat, xval, yval, colval, type, fillval = colval,
   } else if (type == 'Bar') {
     gg <- gg + geom_bar(aes_string(color = NULL, fill = fillval)) +
       scale_fill_gdocs()
+  } else if (type == 'Violin') {
+    gg <- gg + geom_violin(aes_string(fill = fillval)) +
+      scale_fill_gdocs()
   }
+  
   gg <- gg + theme_bw()
+  
+  if (facetval != 'None') {
+    gg <- gg + facet_wrap(facetval)
+  }
+  
   return(gg)
 }

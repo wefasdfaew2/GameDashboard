@@ -172,21 +172,26 @@ server <- function(input, output, session) {
 # FIGURES TAB #
 ###############
   figure <- eventReactive(input$abCreatePlot, {
+    type <- input$slPlotType
     x <- input$slXaxis
     y <- input$slYaxis
-    colval <- input$slColor
-    fillval <- colval
-    type <- input$slPlotType
-    groupval <- NULL
-    facetval <- NULL
+    color <- switch (input$slColor,
+                     'None' = NULL,
+                     'Sex' = 'Sex',
+                     'Age' = 'Age',
+                     'CapMtnRange' = 'CapMtnRange',
+                     'CapHuntUnit' = 'CapHuntUnit'
+    )
+    fillval <- color
+    facetval <- input$slFacet
     
-    mess <- biometric() %>% 
-      select(ndowID, EncounterID, CapMtnRange, CapHuntUnit, CapYear,
-             Age, Sex, Biometric, Measurement) %>% 
+    spreadBiom <- biometric() %>% 
+      select(ndowID, EncounterID, Biometric, Measurement) %>% 
       tidyr::spread(Biometric, Measurement)
+    spreadBiom <- left_join(dat(), spreadBiom, by = c('EncounterID' = 'EncounterID'))
     
-    gg <- intPlot(mess, xval = x, yval = y, type = type,
-                  colval = colval)
+    gg <- intPlot(spreadBiom, xval = x, yval = y, type = type,
+                  colval = color, fillval = fillval, facetval = facetval)
     return(gg)
   })
   
