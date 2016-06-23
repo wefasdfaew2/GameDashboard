@@ -61,8 +61,20 @@ dashboardPage(skin = 'green',
                                    choices = 13:20)),
                 column(width = 4,
                        selectInput('slSvySpecies', 'Survey Species', selected = '',
-                                   choices = c('DBHS', 'MULD', 'RMEL')))
-                )),
+                                   choices = '')),
+                column(width = 4,
+                       actionButton('abSurveyData', 'Get Survey Data'))
+                ),
+            fluidRow(
+                box(title = 'Survey Map', width = 12,
+                    leafletOutput('mpSurvey'))
+                    ),
+            fluidRow(
+              box(title = 'Survey Data', width = 12,
+                  DT::dataTableOutput('tbSurvey'))
+              )
+            ),
+    
     tabItem(tabName = 'figures',
         fluidRow(title = 'Figure Input', width = 12,
             column(width = 4,

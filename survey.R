@@ -13,29 +13,29 @@ dat$SURVEYDATE <- as_date(mdy_hms(dat$SURVEYDATE))
 dat$YEAR <- year(dat$SURVEYDATE)
 
 map_dat <- dat %>%  select(SURVEYID, SURVEYDATE, TIME, EASTING_X, NORTHING_Y, SPECIES, TOTAL,
-                           ADULT, JUVENILE, MALE, FEMALE, UNIT)
+                           ADULT, JUVENILE, MALE, FEMALE, UNIT, YEAR)
 map_coords <- xyConv(map_dat, xy = c('EASTING_X', 'NORTHING_Y'), '+init=epsg:26911', '+init=epsg:4326')
 
 
 
 srvyid <- dat %>% select(SURVEYID) %>% magrittr::extract2(1) %>% unique() %>% sort()
-units <- dat %>% select(UNIT) %>% extract2(1) %>% unique() %>% sort()
-species <- dat %>% select(UNIT) %>% extract2(1) %>% unique() %>% sort()
-yrs <- dat %>% select(YEAR) %>% extract2(1) %>% unique() %>% sort()
 vBios <- bios %>% select(Biologist) %>% extract2(1) %>%  unique() %>% sort()
 
 tst <- map_coords %>% 
-  filter(UNIT == 164 & SPECIES == 'DBHS')
-
+  filter(UNIT == 77 & SPECIES == 'MULD')
+yrs <- tst %>% select(YEAR) %>% extract2(1) %>% unique() %>% sort()
+pal <- colorFactor(ggthemes::gdocs_pal()(length(yrs)), yrs)
+previewColors(pal, tst$YEAR)
 
 leaflet() %>% 
   addProviderTiles('Esri.WorldTopoMap') %>% 
-  addCircleMarkers(lng = mu13$x, lat = mu13$y, 
+  addCircleMarkers(lng = tst$x, lat = tst$y, 
                    stroke = F,
-                   fillOpacity = .4,
-                   radius = mu13$TOTAL)
-pal <- leaflet::colorQuantile(viridis::viridis(), domain = mu13$TOTAL)
-previewColors(pal, mu13$TOTAL)
+                   fillOpacity = .6,
+                   radius = sqrt(tst$TOTAL) + 2,
+                   color = pal(tst$YEAR)) %>% 
+  addLegend('bottomright', pal, tst$YEAR)
+
 
 
 
@@ -61,7 +61,8 @@ ui <- fluidPage(
       selectInput('slUnit', 'Unit', selected = '', choices = ''),
       selectInput('slSpecies', 'Species', selected = '', choices = ''),
       selectInput('slYear', 'Year', selected = '', choices = ''),
-      selectInput('slSurvey', 'Survey ID', selected = '', choices = srvyid)
+      selectInput('slSurvey', 'Survey ID', selected = '', choices = srvyid),
+      actionButton('acButton', 'Map')
     ),
     mainPanel(
       leaflet::leafletOutput('map'),
@@ -90,18 +91,52 @@ server <- function(input, output, session) {
     updateSelectInput(session, 'slSpecies', choices = lkp()$species, selected = '')
   })
   
+  mapdat <- eventReactive(input$acButton, {
+    map_coords %>% filter(UNIT == input$slUnit & SPECIES == input$slSpecies)
+  })
+  
   output$map <- renderLeaflet({
-    srv_map <- map_coords %>% filter(UNIT == input$slUnit & SPECIES == input$slSpecies)
     leaflet() %>% addProviderTiles('Esri.WorldTopoMap') %>%
-      addCircleMarkers(lng = srv_map$x, lat = srv_map$y,
+      addCircleMarkers(lng = mapdat()$x, lat = mapdat()$y,
                        stroke = FALSE,
                        fillOpacity = .4,
-                       radius = sqrt(srv_map$TOTAL) + 2)
+                       radius = sqrt(mapdat()$TOTAL) + 2)
   })
   output$table <- DT::renderDataTable({
-    srv_map <- map_coords %>% filter(UNIT == input$slUnit & SPECIES == input$slSpecies)
-    datatable(srv_map, rownames = F, options = list(dom = 't'))
+    smry <- mapdat() %>% group_by(YEAR) %>% 
+      summarize(male = sum(MALE, na.rm = T),
+                female = sum(FEMALE, na.rm = T),
+                juvenile = sum(JUVENILE, na.rm = T),
+                adult = sum(ADULT, na.rm = T),
+                total = sum(TOTAL, na.rm = T),
+                groups = n())
+    datatable(smry, rownames = F, options = list(dom = 't'))
   })
 }
 
 shiny::shinyApp(ui = ui, server = server)
+
+# SURVEY STANDARD ERROR
+svy_sum <- tst %>% 
+  group_by(YEAR) %>% 
+  summarise(male = sum(MALE, na.rm = T),
+            female = sum(FEMALE, na.rm = T),
+            juvenile = sum(JUVENILE, na.rm = T),
+            adult = sum(ADULT, na.rm = T),
+            ttl = sum(JUVENILE + ADULT, na.rm = T),
+            fsq = sum(JUVENILE**2, na.rm = T),
+            t = sum(ADULT, na.rm = T),
+            tsq = sum(ADULT**2, na.rm = T),
+            fxt = sum(JUVENILE * ADULT, na.rm = T),
+            pf = sum(JUVENILE, na.rm = T) / (sum(ADULT, na.rm = T) + sum(JUVENILE, na.rm = T)),
+            n = n()) %>%  
+  mutate(femjuv = juvenile + adult,
+         pf1 = juvenile / (adult + juvenile),
+         r = pf / (1 - pf),
+         ttl1 = juvenile + adult,
+         fsq1 = juvenile**2,
+         tsq1 = adult**2,
+         fxt1 = juvenile * adult
+         )
+
+(n*((fsq+(r^2*tsq))-(2*r*fxt))/(t^2*(n-1)))^0.5

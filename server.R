@@ -18,6 +18,14 @@ source('global.R')
 
 bios <- read_csv('data/bioareas.csv')
 ranges <- read_csv('data/ranges.csv')
+srvy_details <- read_csv('data/tbl_survey_details.txt')
+srvy_details <- filter(srvy_details, !(UNIT %in% c('061ID', '066ID')))
+survey <- read_csv('data/tbl_survey_comp.txt')
+survey <- left_join(survey, srvy_details[, 1:5], by = c('SURVEYID' = 'SURVEYID'))
+survey$TIME <- strftime(mdy_hms(survey$TIME), format = '%H:%M:%S')
+survey$UNIT <- as.numeric(survey$UNIT)
+survey$SURVEYDATE <- as_date(mdy_hms(survey$SURVEYDATE))
+survey$YEAR <- year(survey$SURVEYDATE)
 
 colPalette <- c("#3366CC", "#DC3912", "#FF9900", "#109618", "#990099", "#0099C6", 
                 "#DD4477", "#66AA00", "#B82E2E", "#316395", "#994499", "#22AA99", 
@@ -154,6 +162,49 @@ server <- function(input, output, session) {
     datatable(dat, rownames = F, options = list(dom = 't'))
   })
   
+##############
+# SURVEY TAB #
+##############
+  srvyInput <- eventReactive(input$slBiologist, {
+    resp <- bios %>% filter(Biologist == input$slBiologist)
+    vUnit <- resp %>% select(HuntUnit) %>% extract2(1) %>% unique() %>% sort()
+    vSpecies <- resp %>% select(Species) %>% extract2(1) %>% unique() %>% sort()
+    srvyDat <- survey %>% filter(UNIT %in% vUnit & SPECIES %in% vSpecies)
+    vUnit <- srvyDat %>% select(UNIT) %>% extract2(1) %>% unique() %>% sort()
+    vSpecies <- srvyDat %>% select(SPECIES) %>% extract2(1) %>% unique() %>% sort()
+    return(list(unit = vUnit, species = vSpecies, df = srvyDat))
+  })
+  
+  observeEvent(input$slBiologist, {
+    updateSelectInput(session, 'slSvyUnit', selected = '', choices = srvyInput()$unit)
+    updateSelectInput(session, 'slSvySpecies', selected = '', choices = srvyInput()$species)
+  })
+  
+  mapdat <- eventReactive(input$abSurveyData, {
+    dat <- srvyInput()$df %>% filter(UNIT == input$slSvyUnit, SPECIES == input$slSvySpecies)
+  })
+  
+  output$mpSurvey <- renderLeaflet({
+    dat <- xyConv(mapdat(), xy = c('EASTING_X', 'NORTHING_Y'), 
+                  '+init=epsg:26911', '+init=epsg:4326')
+    leaflet() %>% addProviderTiles('Esri.WorldTopoMap') %>% 
+      addCircleMarkers(lng = dat$x, lat = dat$y,
+                       stroke = FALSE,
+                       fillOpacity = .6,
+                       radius = sqrt(dat$TOTAL) + 2)
+  })
+  
+  output$tbSurvey <- DT::renderDataTable({
+    dat <- mapdat() %>% 
+      group_by(YEAR) %>% 
+      summarize(male = sum(MALE, na.rm = T),
+                female = sum(FEMALE, na.rm = T),
+                juvenile = sum(JUVENILE, na.rm = T),
+                adult = sum(ADULT, na.rm = T),
+                total = sum(TOTAL, na.rm = T),
+                groups = n())
+    datatable(dat, rownames = FALSE, options = list(dom = 't'))
+  })
 ###############
 # FIGURES TAB #
 ###############
