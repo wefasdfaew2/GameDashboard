@@ -18,21 +18,7 @@ source('global.R')
 
 bios <- read_csv('data/bioareas.csv')
 ranges <- read_csv('data/ranges.csv')
-xyConv <- function(df, xy = c('long_x', 'lat_y'), CRSin = '+proj=longlat',
-                   CRSout = '+proj=utm +zone=11') {
-  df <- df[complete.cases(df[, xy]), ]
-  coord <- data.frame(df[, xy])
-  colnames(coord) <- c('x', 'y') 
-  coord[, 1] <- as.numeric(coord[, 1])
-  coord[, 2] <- as.numeric(coord[, 2])
-  conv <- SpatialPoints(coordinates(coord),
-                        proj4string = CRS(CRSin))
-  conv <- spTransform(conv, CRS(CRSout))
-  conv <- data.frame(conv)
-  colnames(conv) <- c('x', 'y')
-  df <- cbind(df, conv)
-  return(df)
-}
+
 colPalette <- c("#3366CC", "#DC3912", "#FF9900", "#109618", "#990099", "#0099C6", 
                 "#DD4477", "#66AA00", "#B82E2E", "#316395", "#994499", "#22AA99", 
                 "#AAAA11", "#6633CC", "#E67300", "#8B0707", "#651067", "#329262", 

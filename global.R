@@ -1,3 +1,19 @@
+xyConv <- function(df, xy = c('long_x', 'lat_y'), CRSin = '+proj=longlat',
+                   CRSout = '+proj=utm +zone=11') {
+  df <- df[complete.cases(df[, xy]), ]
+  coord <- data.frame(df[, xy])
+  colnames(coord) <- c('x', 'y') 
+  coord[, 1] <- as.numeric(coord[, 1])
+  coord[, 2] <- as.numeric(coord[, 2])
+  conv <- SpatialPoints(coordinates(coord),
+                        proj4string = CRS(CRSin))
+  conv <- spTransform(conv, CRS(CRSout))
+  conv <- data.frame(conv)
+  colnames(conv) <- c('x', 'y')
+  df <- cbind(df, conv)
+  return(df)
+}
+
 intPlot <- function(dat, xval, yval, colval, type, fillval = colval,
                     groupval = NULL, facetval = NULL) {
   gg <- ggplot(dat, aes_string(x = xval, y = yval))
