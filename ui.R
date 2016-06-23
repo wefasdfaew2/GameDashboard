@@ -9,7 +9,7 @@ dashboardPage(skin = 'green',
     sidebarMenu(
       menuItem('Encounter', tabName = 'encounter', icon = icon('binoculars')),
       menuItem('Health', tabName = 'widgets', icon = icon('stethoscope')),
-      menuItem('Maps', tabName = 'maps', icon = icon('globe')),
+      menuItem('Survey', tabName = 'survey', icon = icon('globe')),
       menuItem('Figures', tabName = 'figures', icon = icon('area-chart')),
       menuItem('Data', tabName = 'data', icon = icon('database'))
     )
@@ -54,6 +54,15 @@ dashboardPage(skin = 'green',
                  DT::dataTableOutput('tbEncounter'))
                 )
     ),
+    tabItem(tabName = 'survey',
+            fluidRow(title = 'Survey Input', width = 12,
+                column(width = 4,
+                       selectInput('slSvyUnit', 'Survey Unit', selected = '',
+                                   choices = 13:20)),
+                column(width = 4,
+                       selectInput('slSvySpecies', 'Survey Species', selected = '',
+                                   choices = c('DBHS', 'MULD', 'RMEL')))
+                )),
     tabItem(tabName = 'figures',
         fluidRow(title = 'Figure Input', width = 12,
             column(width = 4,
