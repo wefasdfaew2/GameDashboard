@@ -18,34 +18,26 @@ dashboardPage(skin = 'green',
   dashboardBody(useShinyjs(),
     tabItems(
       tabItem(tabName = 'encounter',
-          div(id = 'getdata', class = 'whitebg',
-          fluidRow(title = 'Get Data', width = 12,
-              column(width = 3,
-                     selectInput('slBiologist', 'Biologist', choices = '')),
-              column(width = 3, 
-                     selectInput('slLookup', 'Search By', selected = 'Hunt Unit',
-                                 choices = c('Management Area', 'Hunt Unit', 'Mountain Range'))),
-              column(width = 3,
-                     selectizeInput('slLookupValue', '', choices = '', multiple = TRUE)),
-              column(width = 3,
-                     selectizeInput('slSpecies', 'Species', choices = '', multiple = TRUE))
+        fluidRow(width = 12, 
+          box(title = 'Get Data', width = 3,  
+              selectInput('slBiologist', 'Biologist', choices = ''),
+              selectInput('slLookup', 'Search By', selected = 'Hunt Unit',
+                          choices = c('Management Area', 'Hunt Unit', 'Mountain Range')),
+              selectizeInput('slLookupValue', '', choices = '', multiple = TRUE),
+              selectizeInput('slSpecies', 'Species', choices = '', multiple = TRUE),
+              selectizeInput('slYear', 'Year', choices = '', multiple = TRUE),
+              actionButton('abGetData', 'Get Data', width = '100%', icon = icon('cloud-download'))
               ),
-          fluidRow(width = 12,
-              column(width = 3, offset = 9, 
-                     actionButton('abGetData', 'Get Data', icon = icon('cloud-download')))
-              )),
-        br(),
-        
-        fluidRow(
-          box(title = 'Encounter Map', width = 12, height = '600px',
-              leafletOutput('mpEncounter', height = '540px'))
-          ),
+          box(title = 'Encounter Map', width = 9, height = '600px',
+              leafletOutput('mpEncounter', height = '540px')
+              )
+        ),
         fluidRow(
           tabBox(title = 'Species Count', width = 8, height = 500, side = 'right',
-            tabPanel('Species', 
-                     plotOutput('plSpeciesBar', height = '430px')),
             tabPanel('Annual',
-                     plotOutput('plSpeciesTS', height = '430px'))),
+                     plotOutput('plSpeciesTS', height = '430px')),
+            tabPanel('Species', 
+                     plotOutput('plSpeciesBar', height = '430px'))),
           box(title = 'Distribution Tables', width = 4, height = 500,
               DT::dataTableOutput('tbSppDist'))
         ),
@@ -54,27 +46,35 @@ dashboardPage(skin = 'green',
                  DT::dataTableOutput('tbEncounter'))
                 )
     ),
+    ##############
+    # SURVEY TAB #
+    ##############
     tabItem(tabName = 'survey',
-            fluidRow(title = 'Survey Input', width = 12,
-                column(width = 4,
-                       selectInput('slSvyUnit', 'Survey Unit', selected = '',
-                                   choices = 13:20)),
-                column(width = 4,
-                       selectInput('slSvySpecies', 'Survey Species', selected = '',
-                                   choices = '')),
-                column(width = 4,
-                       actionButton('abSurveyData', 'Get Survey Data'))
-                ),
-            fluidRow(
-                box(title = 'Survey Map', width = 12,
-                    leafletOutput('mpSurvey'))
-                    ),
-            fluidRow(
-              box(title = 'Survey Data', width = 12,
-                  DT::dataTableOutput('tbSurvey'))
+        fluidRow(width = 12,
+          box(title = 'Suvey Input', width = 3,
+              selectInput('slSvyUnit', 'Survey Unit', selected = '', choices = ''),
+              selectInput('slSvySpecies', 'Survey Species', selected = '', choices = ''),
+              actionButton('abSurveyData', 'Get Survey Data', width = '100%')
+              ),
+          box(title = 'Survey Map', width = 9,
+              leafletOutput('mpSurvey')
               )
-            ),
-    
+          ),
+        fluidRow(width = 12,
+          tabBox(title = 'Survey Data', width = 12,
+            tabPanel(title = 'Summary',
+                     DT::dataTableOutput('tbSurvey')),
+            tabPanel(title = 'Group',
+                     DT::dataTableOutput('tbSurveyGroups'))
+              )),
+        fluidRow(width = 12,
+          box(title = 'Survey Figure', width = 12,
+              plotOutput('plSurvey'))
+              )
+          ),
+    ###############
+    # FIGURES TAB #
+    ###############
     tabItem(tabName = 'figures',
         fluidRow(title = 'Figure Input', width = 12,
             column(width = 4,
@@ -102,6 +102,9 @@ dashboardPage(skin = 'green',
         fluidRow(width = 12,
                  plotOutput('plFigure'))
         ),
+    ############
+    # DATA TAB #
+    ############
     tabItem(tabName = 'data',
         tabBox(title = 'Encounter Summary', width = 12,
           tabPanel('Table', 

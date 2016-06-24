@@ -123,12 +123,21 @@ server <- function(input, output, session) {
                        stroke = FALSE, 
                        radius = 4, 
                        fillOpacity = .8,
-                       color = pal(dat$Species))
+                       color = pal(dat$Species),
+                       popup = paste(sep = '</br>',
+                                     paste('<b>Species:</b>', dat$Species),
+                                     paste('<b>NDOW ID:</b> ', dat$ndowID),
+                                     paste('<b>Date:</b> ', dat$CapDate),
+                                     paste('<b>Range:</b> ', dat$CapMtnRange),
+                                     paste('<b>Unit:</b> ', dat$CapHuntUnit),
+                                     paste('<b>UTM:</b> ', dat$capE, '<b>E</b> ', dat$capN, '<b>N</b>')
+                                     ))
   })
   
   ## encounter summary table
   output$tbEncounter <- DT::renderDataTable({
-    datatable(dat()[, c('Species', 'ndowID', 'Sex', 'Status', 'CapDate', 'CapMtnRange', 'CapHuntUnit', 'CapYear')])
+    datatable(dat()[, c('Species', 'ndowID', 'Sex', 'Status', 'CapDate', 'CapMtnRange', 'CapHuntUnit', 
+                        'capE', 'capN', 'CapYear')])
   })
   
   ## species distribution for selected input
@@ -187,11 +196,22 @@ server <- function(input, output, session) {
   output$mpSurvey <- renderLeaflet({
     dat <- xyConv(mapdat(), xy = c('EASTING_X', 'NORTHING_Y'), 
                   '+init=epsg:26911', '+init=epsg:4326')
+    n <- length(levels(as.factor(dat$YEAR))); print(n)
+    pal <- colorFactor(gdocs_pal()(n), dat$YEAR)
     leaflet() %>% addProviderTiles('Esri.WorldTopoMap') %>% 
       addCircleMarkers(lng = dat$x, lat = dat$y,
                        stroke = FALSE,
+                       color = pal(dat$YEAR),
                        fillOpacity = .6,
-                       radius = sqrt(dat$TOTAL) + 2)
+                       radius = sqrt(dat$TOTAL) + 2,
+                       popup = paste(sep = '</br>',
+                                     paste('<b>Year:</b>', dat$YEAR),
+                                     paste('<b>Male:</b> ', dat$MALE),
+                                     paste('<b>Female:</b> ', dat$FEMALE),
+                                     paste('<b>Juvenile:</b> ', dat$JUVENILE),
+                                     paste('<b>Adult:</b> ', dat$ADULT),
+                                     paste('<b>Total:</b> ', dat$TOTAL)
+                                     ))
   })
   
   output$tbSurvey <- DT::renderDataTable({
@@ -204,6 +224,26 @@ server <- function(input, output, session) {
                 total = sum(TOTAL, na.rm = T),
                 groups = n())
     datatable(dat, rownames = FALSE, options = list(dom = 't'))
+  })
+  
+  output$tbSurveyGroups <- DT::renderDataTable({
+    dat <- mapdat() %>% 
+      select(SURVEYID, SURVEYDATE, MALE, FEMALE, JUVENILE, ADULT, TOTAL)
+    datatable(dat, rownames = FALSE, options = list(dom = 't'))
+  })
+  
+  output$plSurvey <- renderPlot({
+    dat <- mapdat() %>% 
+      group_by(YEAR) %>% 
+      summarize(male = sum(MALE, na.rm = T),
+                female = sum(FEMALE, na.rm = T),
+                juvenile = sum(JUVENILE, na.rm = T),
+                adult = sum(ADULT, na.rm = T),
+                total = sum(TOTAL, na.rm = T),
+                groups = n())
+    ggplot(dat, aes(x = YEAR, y = total)) +
+      geom_point(color = colPalette[1]) +
+      theme_bw()
   })
 ###############
 # FIGURES TAB #
